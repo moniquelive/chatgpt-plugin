@@ -1,21 +1,22 @@
 openapi: 3.0.2
 info:
-  title: Retrieval Plugin API
-  description: A retrieval API for querying and filtering documents based on natural language queries and metadata
+  title: Quotation Plugin API
+  description: Plugin for creating bike quick quotations. Use it whenever a user asks to create a bike quick quote.
   version: 1.0.0
-  servers:
-    - url: https://your-app-url.com
+servers:
+  #- url: https://quot-api.monique.dev
+  - url: http://localhost:8080
 paths:
-  /query:
+  /quotation/api/quotation/quick-quote-partnership:
     post:
-      summary: Query
-      description: Accepts search query objects array each with query and optional filter. Break down complex questions into sub-questions. Refine results by criteria, e.g. time / source, don't do this often. Split queries if ResponseTooLargeError occurs.
-      operationId: query_query_post
+      summary: Bike Quick Quote
+      description: Accepts a quick quote request object. Break down complex questions into sub-questions. Refine results by criteria, e.g. time / source, don't do this often. Split queries if ResponseTooLargeError occurs.
+      operationId: bike_quick_quote
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QueryRequest"
+              $ref: "#/components/schemas/QuickQuoteRequest"
         required: true
       responses:
         "200":
@@ -23,174 +24,146 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/QueryResponse"
-        "422":
-          description: Validation Error
+                $ref: "#/components/schemas/QuickQuoteResponse"
+        "401":
+          description: Access denied due to invalid subscription key
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HTTPValidationError"
-      security:
-        - HTTPBearer: []
+                $ref: "#/components/schemas/AccessDeniedError"
 components:
   schemas:
-    DocumentChunkMetadata:
-      title: DocumentChunkMetadata
-      type: object
-      properties:
-        source:
-          $ref: "#/components/schemas/Source"
-        source_id:
-          title: Source Id
-          type: string
-        url:
-          title: Url
-          type: string
-        created_at:
-          title: Created At
-          type: string
-        author:
-          title: Author
-          type: string
-        document_id:
-          title: Document Id
-          type: string
-    DocumentChunkWithScore:
-      title: DocumentChunkWithScore
+    AccessDeniedError:
+      title: AccessDeniedError
       required:
-        - text
-        - metadata
-        - score
+        - statusCode
+        - message
       type: object
       properties:
-        id:
-          title: Id
-          type: string
-        text:
-          title: Text
-          type: string
-        metadata:
-          $ref: "#/components/schemas/DocumentChunkMetadata"
-        embedding:
-          title: Embedding
-          type: array
-          items:
-            type: number
-        score:
-          title: Score
-          type: number
-    DocumentMetadataFilter:
-      title: DocumentMetadataFilter
-      type: object
-      properties:
-        document_id:
-          title: Document Id
-          type: string
-        source:
-          $ref: "#/components/schemas/Source"
-        source_id:
-          title: Source Id
-          type: string
-        author:
-          title: Author
-          type: string
-        start_date:
-          title: Start Date
-          type: string
-        end_date:
-          title: End Date
-          type: string
-    HTTPValidationError:
-      title: HTTPValidationError
-      type: object
-      properties:
-        detail:
-          title: Detail
-          type: array
-          items:
-            $ref: "#/components/schemas/ValidationError"
-    Query:
-      title: Query
-      required:
-        - query
-      type: object
-      properties:
-        query:
-          title: Query
-          type: string
-        filter:
-          $ref: "#/components/schemas/DocumentMetadataFilter"
-        top_k:
-          title: Top K
+        statusCode:
+          title: Status Code
           type: integer
-          default: 3
-    QueryRequest:
-      title: QueryRequest
-      required:
-        - queries
-      type: object
-      properties:
-        queries:
-          title: Queries
-          type: array
-          items:
-            $ref: "#/components/schemas/Query"
-    QueryResponse:
-      title: QueryResponse
-      required:
-        - results
-      type: object
-      properties:
-        results:
-          title: Results
-          type: array
-          items:
-            $ref: "#/components/schemas/QueryResult"
-    QueryResult:
-      title: QueryResult
-      required:
-        - query
-        - results
-      type: object
-      properties:
-        query:
-          title: Query
-          type: string
-        results:
-          title: Results
-          type: array
-          items:
-            $ref: "#/components/schemas/DocumentChunkWithScore"
-    Source:
-      title: Source
-      enum:
-        - email
-        - file
-        - chat
-      type: string
-      description: An enumeration.
-    ValidationError:
-      title: ValidationError
-      required:
-        - loc
-        - msg
-        - type
-      type: object
-      properties:
-        loc:
-          title: Location
-          type: array
-          items:
-            anyOf:
-              - type: string
-              - type: integer
-        msg:
+        message:
           title: Message
           type: string
-        type:
-          title: Error Type
+    QuickQuoteRequest:
+      title: QuickQuoteRequest
+      required:
+        - OperationCode
+        - IsPreRevamp
+        - RiskAnalysis
+        - PersonalData
+        - deductibleOption
+      type: object
+      properties:
+        OperationCode:
+          title: Operation Code
           type: string
-  securitySchemes:
-    HTTPBearer:
-      type: http
-      scheme: bearer
+        IsPreRevamp:
+          title: Is Pre Revamp
+          type: boolean
+        RiskAnalysis:
+          title: Risk Analysis
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskAnalysis"
+        PersonalData:
+          title: Personal Data
+          required:
+            - name
+          type: object
+          properties:
+            name:
+              title: User Full Name
+              type: string
+        deductibleOption:
+          title: Deductible Option
+          type: integer
+          default: 2
+    RiskAnalysis:
+      title: Risk Analysis
+      description: |
+          Question ID | Label | Type | Possible Answers | Notes (optional)
+           1 | Is activation or renovation | single choice | 1: Ativation, 2: Renovation
+          11 | Market Value | numeric value | floating point number in BRL
+          15 | Has invoice? | single choice | 1: Yes, 2: No
+          16 | Bike is in pristine state? | single choice | 1: Yes, 2: No
+          38 | Bike material | Always '2'
+          50 | International coverage | single choice |
+                1: 'None',
+                2: 'South and Cetral America',
+                3: 'North America and Europe',
+                4: 'Africa, Asia, Oceania and Antartida',
+                5: 'Any Continent'
+          52 | Civil Responsibility Coverage | single choice | 1: '100%', 2: '200%', 3: '300%'
+          53 | Validty | single choice | 1: '1 year', 2: '2 years' | If answer is 2 (2 years) also ask then make Question ID = 61 mandatory otherwise make it optional
+          61 | Pluriannual deprecation | single choice | 1: Yes, 2: No
+      required:
+        - questionId
+        - answer
+      type: object
+      properties:
+        questionId:
+          title: Question ID
+          type: string
+        answer:
+          title: Answer
+          type: string
+    QuickQuoteResponse:
+      title: QueryResult
+      description: The Quick Quotation API response. Parse each field in a human readable form and present a summary of the results.
+      required:
+        - identifier
+        - proposalNumber
+        - name
+        - status
+        - netValue
+        - discount
+        - commission
+        - commissionDiscount
+        - selectedCommission
+        - selectedPremiumIncreasePercentage
+        - premiumIncreaseValue
+        - message
+        - totalAmount
+      type: object
+      properties:
+        identifier:
+          title: Identifier
+          type: string
+        proposalNumber:
+          title: Proposal Number
+          type: string
+        name:
+          title: Name
+          type: string
+        status:
+          title: Status
+          type: integer
+        netValue:
+          title: Net Value
+          type: number
+        discount:
+          title: Discount
+          type: number
+        commission:
+          title: Commission
+          type: number
+        commissionDiscount:
+          title: Commission Discount
+          type: number
+        selectedCommission:
+          title: Selected Commission
+          type: number
+        selectedPremiumIncreasePercentage:
+          title: Selected Premium Increase Percentage
+          type: number
+        premiumIncreaseValue:
+          title: Premium Increase Value
+          type: number
+        message:
+          title: Message
+          type: string
+        totalAmount:
+          title: Total Amount
+          type: number
